@@ -28,8 +28,12 @@ describe("StateDock API", () => {
     });
   });
   afterEach(() => {
-    client.close();
-    rmSync(directory, { recursive: true, force: true });
+    try {
+      client.close();
+    } catch {}
+    try {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {}
   });
   it("creates projects, plans, and appends actor-attributed activity", async () => {
     await migrate(client);

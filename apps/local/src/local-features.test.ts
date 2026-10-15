@@ -27,7 +27,9 @@ describe("StateDock Local Features", () => {
       const sec2 = new SecurityManager({ port: 4040, dataDir: tmpDir });
       assert.equal(sec2.getAgentToken(), token);
     } finally {
-      rmSync(tmpDir, { recursive: true, force: true });
+      try {
+        rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {}
     }
   });
 
@@ -112,7 +114,9 @@ describe("StateDock Local Features", () => {
       });
       assert.equal(importRes.status, 200);
     } finally {
-      rmSync(tmpDir, { recursive: true, force: true });
+      try {
+        rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {}
     }
   });
 });
