@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: statedock-macos-arm64
+            archive_ext: tar.gz
+          - os: macos-13
+            artifact_name: statedock-macos-x64
+            archive_ext: tar.gz
+          - os: ubuntu-latest
+            artifact_name: statedock-linux-x64
+            archive_ext: tar.gz
+          - os: windows-latest
+            artifact_name: statedock-windows-x64
+            archive_ext: zip
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build packages and Web SPA
+        run: pnpm build
+
+      - name: Prepare release bundle
+        run: node scripts/package.mjs
+
+      - name: Package Unix Archive (tar.gz)
+        if: runner.os != 'Windows'
+        run: |
+          cd release-bundle
+          tar -czvf ../${{ matrix.artifact_name }}.tar.gz .
+          cd ..
+          shasum -a 256 ${{ matrix.artifact_name }}.tar.gz > ${{ matrix.artifact_name }}.sha256
+
+      - name: Package Windows Archive (zip)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path release-bundle/* -DestinationPath "${{ matrix.artifact_name }}.zip"
+          $hash = (Get-FileHash -Path "${{ matrix.artifact_name }}.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  ${{ matrix.artifact_name }}.zip" | Out-File -FilePath "${{ matrix.artifact_name }}.sha256" -Encoding utf8
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            statedock-*.*
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Consolidate Checksums
+        run: |
+          mkdir -p dist
+          find release-artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} dist/ \;
+          find release-artifacts -type f -name "*.sha256" -exec cat {} + > dist/checksums.txt
+          cat dist/checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
