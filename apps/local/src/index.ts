@@ -137,14 +137,24 @@ async function main() {
   if (existsSync(webRoot)) {
     app.get("/assets/*", serveStatic({ root: webRoot }));
     app.get("/icons/*", serveStatic({ root: webRoot }));
+    app.get("/logo.png", serveStatic({ root: webRoot, path: "logo.png" }));
+    app.get("/big-logo.png", serveStatic({ root: webRoot, path: "big-logo.png" }));
+    app.get("/apple-touch-icon.png", serveStatic({ root: webRoot, path: "apple-touch-icon.png" }));
+    app.get("/apple-touch-icon-precomposed.png", serveStatic({ root: webRoot, path: "apple-touch-icon-precomposed.png" }));
+    app.get("/offline.html", serveStatic({ root: webRoot, path: "offline.html" }));
     app.get("/doc.md", serveStatic({ root: webRoot, path: "doc.md" }));
     app.get("/doc.zh.md", serveStatic({ root: webRoot, path: "doc.zh.md" }));
     app.get("/favicon.ico", serveStatic({ root: webRoot, path: "favicon.ico" }));
     app.get("/manifest.webmanifest", serveStatic({ root: webRoot, path: "manifest.webmanifest" }));
     app.get("/sw.js", serveStatic({ root: webRoot, path: "sw.js" }));
     app.get("/", serveStatic({ root: webRoot, path: "index.html" }));
-    // Wildcard fallback for SPA client-side routing
-    app.get("*", serveStatic({ root: webRoot, path: "index.html" }));
+    // Wildcard fallback for SPA client-side routing (strictly non-API)
+    app.get("*", (c) => {
+      if (c.req.path.startsWith("/api/") || c.req.path === "/mcp") {
+        return c.json({ error: "not_found" }, 404);
+      }
+      return serveStatic({ root: webRoot, path: "index.html" })(c, async () => {});
+    });
   }
 
   // Start loopback listener

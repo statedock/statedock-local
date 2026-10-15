@@ -111,7 +111,12 @@ export function createApp(service: StateDockService, options: AppOptions) {
     }
   });
 
-  // 6. Setup status (Always initialized in Local mode, zero-login)
+  // 6. Auth session endpoint: return 404 so Frontend activates local mode
+  app.get("/api/auth/session", (c) => {
+    return c.json({ error: "not_found", mode: "local" }, 404);
+  });
+
+  // 7. Setup status (Always initialized in Local mode, zero-login)
   app.get("/api/setup/status", (c) => {
     return c.json({ initialized: true, mode: "local", version: CURRENT_VERSION });
   });
@@ -437,6 +442,11 @@ export function createApp(service: StateDockService, options: AppOptions) {
   app.post("/api/projects/:project/activity", async (c) => {
     await service.appendActivity(c.req.param("project"), await c.req.json(), c.get("actor"));
     return c.body(null, 201);
+  });
+
+  // 12. Fallback 404 for any unhandled /api/* routes
+  app.all("/api/*", (c) => {
+    return c.json({ error: "not_found", message: `API route ${c.req.path} not found` }, 404);
   });
 
   return app;
