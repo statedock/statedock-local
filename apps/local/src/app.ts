@@ -22,9 +22,11 @@ import { SecurityManager } from "./security.js";
 import { backupDatabase } from "./storage.js";
 import { applyUpdate, checkUpdate, CURRENT_VERSION } from "./updater.js";
 import { exportSnapshot, importSnapshot } from "./export-import.js";
+import { NotificationManager } from "./notifications.js";
 
 export interface AppOptions {
   securityManager: SecurityManager;
+  notificationManager?: NotificationManager;
   client: Client;
   dataDir: string;
   backupsDir: string;
@@ -33,6 +35,7 @@ export interface AppOptions {
 
 export function createApp(service: StateDockService, options: AppOptions) {
   const app = new Hono<{ Variables: { actor: import("@statedock/core").Actor } }>();
+  const notificationManager = options.notificationManager ?? new NotificationManager(options.dataDir);
 
   // 1. Host Validation (Prevent DNS Rebinding)
   app.use("*", options.securityManager.hostValidationMiddleware());
@@ -276,24 +279,30 @@ export function createApp(service: StateDockService, options: AppOptions) {
 
   app.post("/api/plans/:reference/pause", async (c) => {
     const { reason } = z.object({ reason: z.string().min(1) }).parse(await c.req.json());
-    return c.json({
-      data: await service.pauseTask(
-        { reference: c.req.param("reference") },
-        reason,
-        c.get("actor"),
-      ),
-    });
+    const data = await service.pauseTask(
+      { reference: c.req.param("reference") },
+      reason,
+      c.get("actor"),
+    );
+    void notificationManager.dispatchNotification(
+      `StateDock: 任务等待 (${c.req.param("reference")})`,
+      `阻塞原因: ${reason}`,
+    );
+    return c.json({ data });
   });
 
   app.post("/api/plans/:reference/handoff", async (c) => {
     const body = handoffSchema.parse(await c.req.json());
-    return c.json({
-      data: await service.submitHandoff(
-        { reference: c.req.param("reference") },
-        body,
-        c.get("actor"),
-      ),
-    });
+    const data = await service.submitHandoff(
+      { reference: c.req.param("reference") },
+      body,
+      c.get("actor"),
+    );
+    void notificationManager.dispatchNotification(
+      `StateDock: 任务完成 (${c.req.param("reference")})`,
+      data.summary || body.changes || "Agent 已完成任务并提交成果",
+    );
+    return c.json({ data });
   });
 
   app.get("/api/plan-events", async (c) =>
@@ -444,7 +453,83 @@ export function createApp(service: StateDockService, options: AppOptions) {
     return c.body(null, 201);
   });
 
-  // 12. Fallback 404 for any unhandled /api/* routes
+  // 12. Notification Endpoints (Bark, ntfy, Discord, Webhook, Telegram)
+  app.get("/api/auth/notifications/bark", (c) => c.json({ data: notificationManager.listBark() }));
+  app.post("/api/auth/notifications/bark", async (c) => {
+    const body = await c.req.json();
+    return c.json({ data: notificationManager.addBark(body) }, 201);
+  });
+  app.delete("/api/auth/notifications/bark/:id", (c) => {
+    notificationManager.deleteBark(c.req.param("id"));
+    return c.body(null, 204);
+  });
+  app.post("/api/auth/notifications/bark/:id/test", async (c) => {
+    try {
+      await notificationManager.testBark(c.req.param("id"));
+      return c.json({ ok: true });
+    } catch (err: any) {
+      return c.json({ error: "test_failed", message: err.message }, 500);
+    }
+  });
+
+  app.get("/api/auth/notifications/ntfy", (c) => c.json({ data: notificationManager.listNtfy() }));
+  app.post("/api/auth/notifications/ntfy", async (c) => {
+    const body = await c.req.json();
+    return c.json({ data: notificationManager.addNtfy(body) }, 201);
+  });
+  app.delete("/api/auth/notifications/ntfy/:id", (c) => {
+    notificationManager.deleteNtfy(c.req.param("id"));
+    return c.body(null, 204);
+  });
+  app.post("/api/auth/notifications/ntfy/:id/test", async (c) => {
+    try {
+      await notificationManager.testNtfy(c.req.param("id"));
+      return c.json({ ok: true });
+    } catch (err: any) {
+      return c.json({ error: "test_failed", message: err.message }, 500);
+    }
+  });
+
+  app.get("/api/auth/notifications/discord", (c) => c.json({ data: notificationManager.listDiscord() }));
+  app.post("/api/auth/notifications/discord", async (c) => {
+    const body = await c.req.json();
+    return c.json({ data: notificationManager.addDiscord(body) }, 201);
+  });
+  app.delete("/api/auth/notifications/discord/:id", (c) => {
+    notificationManager.deleteDiscord(c.req.param("id"));
+    return c.body(null, 204);
+  });
+  app.post("/api/auth/notifications/discord/:id/test", async (c) => {
+    try {
+      await notificationManager.testDiscord(c.req.param("id"));
+      return c.json({ ok: true });
+    } catch (err: any) {
+      return c.json({ error: "test_failed", message: err.message }, 500);
+    }
+  });
+  app.get("/api/auth/discord/subscriber", (c) => c.json({ data: { subscriber: null } }));
+
+  app.get("/api/auth/notifications/webhook", (c) => c.json({ data: notificationManager.listWebhook() }));
+  app.post("/api/auth/notifications/webhook", async (c) => {
+    const body = await c.req.json();
+    return c.json({ data: notificationManager.addWebhook(body) }, 201);
+  });
+  app.delete("/api/auth/notifications/webhook/:id", (c) => {
+    notificationManager.deleteWebhook(c.req.param("id"));
+    return c.body(null, 204);
+  });
+  app.post("/api/auth/notifications/webhook/:id/test", async (c) => {
+    try {
+      await notificationManager.testWebhook(c.req.param("id"));
+      return c.json({ ok: true });
+    } catch (err: any) {
+      return c.json({ error: "test_failed", message: err.message }, 500);
+    }
+  });
+
+  app.get("/api/auth/telegram", (c) => c.json({ data: [] }));
+
+  // 13. Fallback 404 for any unhandled /api/* routes
   app.all("/api/*", (c) => {
     return c.json({ error: "not_found", message: `API route ${c.req.path} not found` }, 404);
   });
