@@ -148,13 +148,8 @@ async function main() {
     app.get("/manifest.webmanifest", serveStatic({ root: webRoot, path: "manifest.webmanifest" }));
     app.get("/sw.js", serveStatic({ root: webRoot, path: "sw.js" }));
     app.get("/", serveStatic({ root: webRoot, path: "index.html" }));
-    // Wildcard fallback for SPA client-side routing (strictly non-API)
-    app.get("*", (c) => {
-      if (c.req.path.startsWith("/api/") || c.req.path === "/mcp") {
-        return c.json({ error: "not_found" }, 404);
-      }
-      return serveStatic({ root: webRoot, path: "index.html" })(c, async () => {});
-    });
+    // Wildcard fallback for SPA client-side routing
+    app.get("*", serveStatic({ root: webRoot, path: "index.html" }));
   }
 
   // Start loopback listener
