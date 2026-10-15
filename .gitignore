@@ -1,5 +1,9 @@
 node_modules/
 dist/
+release-bundle/
+statedock-*.tar.gz
+statedock-*.zip
+statedock-*.sha256
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
