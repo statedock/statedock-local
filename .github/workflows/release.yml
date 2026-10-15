@@ -55,6 +55,20 @@ jobs:
       - name: Prepare release bundle
         run: node scripts/package.mjs
 
+      - name: Embed Node runtime (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p release-bundle/bin
+          cp $(which node) release-bundle/bin/node
+          chmod +x release-bundle/bin/node
+
+      - name: Embed Node runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          mkdir -p release-bundle/bin
+          Copy-Item (Get-Command node).Source -Destination release-bundle/bin/node.exe
+
       - name: Package Unix Archive (tar.gz)
         if: runner.os != 'Windows'
         run: |
