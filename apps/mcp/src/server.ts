@@ -18,7 +18,7 @@ export function createServer(service: StateDockService, identity: Actor, publicO
   const origin = publicOrigin ? new URL(publicOrigin).origin : null;
   const connectionName = origin
     ? `statedock_${new URL(origin).host.replace(/[^a-zA-Z0-9]/g, "_")}`
-    : "statedock";
+    : "statedock_local";
   const actor = actorSchema.parse(identity);
   const server = new McpServer(
     { name: connectionName, version: "0.2.0" },

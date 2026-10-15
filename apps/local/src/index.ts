@@ -177,7 +177,7 @@ async function main() {
         JSON.stringify(
           {
             mcpServers: {
-              statedock: {
+              statedock_local: {
                 url: `${url}/mcp`,
                 headers: {
                   Authorization: `Bearer ${token}`,

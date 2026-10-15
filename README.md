@@ -46,7 +46,7 @@ In your agent's MCP configuration (e.g. `~/.cursor/mcp.json` or Antigravity):
 ```json
 {
   "mcpServers": {
-    "statedock": {
+    "statedock_local": {
       "url": "http://127.0.0.1:4040/mcp",
       "headers": {
         "Authorization": "Bearer <YOUR_AGENT_TOKEN>"
