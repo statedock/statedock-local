@@ -31,7 +31,6 @@ Download the precompiled archive for your operating system from [Releases](https
 | Platform | File | How to Run |
 | :--- | :--- | :--- |
 | **macOS (Apple Silicon)** | `statedock-macos-arm64.tar.gz` | Extract and double-click **`StateDock.command`** (or run `./statedock` in Terminal) |
-| **macOS (Intel)** | `statedock-macos-x64.tar.gz` | Extract and double-click **`StateDock.command`** (or run `./statedock` in Terminal) |
 | **Windows (x64)** | `statedock-windows-x64.zip` | Extract and double-click **`statedock.bat`** |
 | **Linux (x64)** | `statedock-linux-x64.tar.gz` | Extract and run **`./statedock.sh`** in terminal |
 

@@ -19,9 +19,6 @@ jobs:
           - os: macos-latest
             artifact_name: statedock-macos-arm64
             archive_ext: tar.gz
-          - os: macos-13
-            artifact_name: statedock-macos-x64
-            archive_ext: tar.gz
           - os: ubuntu-latest
             artifact_name: statedock-linux-x64
             archive_ext: tar.gz

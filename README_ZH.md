@@ -31,7 +31,6 @@ StateDock Local 是专为个人开发者与 Coding Agent（**DeepSeek Harness**�
 | 操作系统 | 下载文件 | 运行方式 |
 | :--- | :--- | :--- |
 | **macOS (Apple Silicon)** | `statedock-macos-arm64.tar.gz` | 解压后双击 **`StateDock.command`**（或在终端运行 `./statedock`） |
-| **macOS (Intel)** | `statedock-macos-x64.tar.gz` | 解压后双击 **`StateDock.command`**（或在终端运行 `./statedock`） |
 | **Windows (x64)** | `statedock-windows-x64.zip` | 解压后双击 **`statedock.bat`** |
 | **Linux (x64)** | `statedock-linux-x64.tar.gz` | 解压后在终端运行 **`./statedock.sh`** |
 
