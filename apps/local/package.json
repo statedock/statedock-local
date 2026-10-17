@@ -1,6 +1,6 @@
 {
   "name": "@statedock/local",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "StateDock Local - Lightweight personal task engine and MCP server",
   "bin": {
     "statedock": "./dist/index.js"

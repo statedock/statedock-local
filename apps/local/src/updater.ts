@@ -16,7 +16,7 @@ import { pipeline } from "node:stream/promises";
 import { spawn } from "node:child_process";
 import { createGunzip } from "node:zlib";
 
-export const CURRENT_VERSION = "0.1.0";
+export const CURRENT_VERSION = "0.1.1";
 const GITHUB_REPO = "statedock/statedock-local";
 
 export interface VersionInfo {
