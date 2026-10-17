@@ -88,7 +88,11 @@ export class NotificationManager {
     return this.store.bark;
   }
 
-  public addBark(input: { name: string; address: string; projectIds?: string[] | null }): BarkConnection {
+  public addBark(input: {
+    name: string;
+    address: string;
+    projectIds?: string[] | null;
+  }): BarkConnection {
     // Extract key from full url like https://api.day.app/KEY or raw KEY
     let key = input.address.trim();
     if (key.includes("/")) {
@@ -129,7 +133,12 @@ export class NotificationManager {
     return this.store.ntfy;
   }
 
-  public addNtfy(input: { name: string; topic: string; authToken?: string; projectIds?: string[] | null }): NtfyConnection {
+  public addNtfy(input: {
+    name: string;
+    topic: string;
+    authToken?: string;
+    projectIds?: string[] | null;
+  }): NtfyConnection {
     const conn: NtfyConnection = {
       id: `ntfy_${randomBytes(8).toString("hex")}`,
       name: input.name.trim(),
@@ -168,7 +177,11 @@ export class NotificationManager {
     return this.store.discord;
   }
 
-  public addDiscord(input: { name: string; url: string; projectIds?: string[] | null }): DiscordConnection {
+  public addDiscord(input: {
+    name: string;
+    url: string;
+    projectIds?: string[] | null;
+  }): DiscordConnection {
     const conn: DiscordConnection = {
       id: `discord_${randomBytes(8).toString("hex")}`,
       name: input.name.trim(),
@@ -205,7 +218,12 @@ export class NotificationManager {
     return this.store.webhook;
   }
 
-  public addWebhook(input: { name: string; url: string; secret?: string; projectIds?: string[] | null }): WebhookConnection {
+  public addWebhook(input: {
+    name: string;
+    url: string;
+    secret?: string;
+    projectIds?: string[] | null;
+  }): WebhookConnection {
     const conn: WebhookConnection = {
       id: `webhook_${randomBytes(8).toString("hex")}`,
       name: input.name.trim(),
