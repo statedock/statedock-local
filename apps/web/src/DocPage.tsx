@@ -14,7 +14,7 @@ const SECTION_IDS = [
   "task-lifecycle",
   "statedock-cloud",
   "cloudflare-self-hosted",
-  "docker-self-hosted",
+  "statedock-local",
   "notifications",
   "troubleshooting",
 ];
@@ -26,6 +26,7 @@ const LEGACY_ANCHORS: Record<number, string> = {
   3: "identities",
   4: "lifecycle",
   5: "quotas",
+  7: "docker-self-hosted",
   8: "notifications",
   9: "faq",
 };
@@ -277,15 +278,16 @@ function renderMarkdown(markdown: string): ReactNode[] {
   return blocks;
 }
 
-export function DocPage() {
+export function DocPage({ initialMarkdown }: { initialMarkdown?: string } = {}) {
   const { lang } = useI18n();
-  const [markdown, setMarkdown] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [markdown, setMarkdown] = useState(initialMarkdown ?? "");
+  const [loading, setLoading] = useState(!initialMarkdown);
   const [loadError, setLoadError] = useState(false);
   const [copied, setCopied] = useState(false);
   const markdownPath = lang === "zh" ? "/doc.zh.md" : "/doc.md";
 
   useEffect(() => {
+    if (initialMarkdown && markdown) return;
     const controller = new AbortController();
     setLoading(true);
     setLoadError(false);

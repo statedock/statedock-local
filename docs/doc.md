@@ -1,6 +1,6 @@
 # StateDock documentation
 
-One guide for StateDock Cloud, Cloudflare self-hosting, and the planned Docker edition. The browser page at [statedock.dev/doc](https://statedock.dev/doc) renders this file; [doc.md](https://statedock.dev/doc.md) remains available to Markdown clients. Choose a deployment section before following setup instructions.
+One guide for StateDock Cloud, Cloudflare self-hosting, and StateDock Local (your computer, a Linux server, or Docker). The browser page at [statedock.dev/doc](https://statedock.dev/doc) renders this file; [doc.md](https://statedock.dev/doc.md) remains available to Markdown clients. Choose a deployment section before following setup instructions.
 
 StateDock stores shared project context and coordinates work. It does not run or wake coding agents, and it does not read your source code.
 
@@ -12,14 +12,14 @@ Choose the deployment you use:
 
 - **StateDock Cloud**: sign in at [app.statedock.dev](https://app.statedock.dev). StateDock operates the service and account.
 - **Cloudflare self-hosted**: deploy the open-source edition in your own Cloudflare account. You operate the instance, email delivery, and backups.
-- **Docker self-hosted**: planned; no runnable distribution is available yet.
+- **StateDock Local**: one open-source program with a built-in SQLite database. Run it on your computer with no sign-in, or install it on a Linux server or in Docker for 24/7 remote access. You operate the instance and backups.
 
 ## Getting started
 
 1. Choose one deployment above and open its web app.
-2. Sign in or, for Cloudflare self-hosting, ask the instance administrator to approve your account.
+2. Sign in or, for Cloudflare self-hosting, ask the instance administrator to approve your account. StateDock Local on your computer needs no sign-in; on a server you sign in with its access token.
 3. Create or select a project, then add a StateDock connection in your coding tool. Use the instance URL and credentials for the same deployment.
-4. Install or refresh the [StateDock Agent setup guide](/agent.md) and [skill](/skill.md) from that same instance. At session start, an agent should call **get_instance_info** and **resume_project** for the bound project.
+4. Have the agent follow the [StateDock Agent setup guide](/agent.md) from that same instance. The workflow rules arrive with the MCP connection; the full protocol is at [skill.md](/skill.md) and is read on demand, not copied into the repository. At session start, an agent should call **get_instance_info** and **resume_project** for the bound project.
 
 For a remote MCP client, create an access token in **MCP Connections** and add the server URL and bearer token to its MCP settings. A typical HTTP configuration is:
 
@@ -102,9 +102,26 @@ The open-source repository includes instructions that can be followed without th
 
 Keep D1, R2 attachments, OAuth KV, configuration, and secrets in your backup plan. Do not use the official Cloud's database or resource IDs for a self-hosted Worker.
 
-## Docker self-hosted
+## StateDock Local: computer, Linux server, Docker
 
-**Coming soon.** The Docker edition is not available to install. There are no released images, Compose files, installation commands, or confirmed release date. The [Docker repository](https://github.com/statedock/statedock-docker) is an announcement page; follow it for a release notice. Do not use Cloudflare setup commands for Docker.
+StateDock Local is a single open-source program ([statedock-local](https://github.com/statedock/statedock-local)) with the web app, API, MCP server and a SQLite database built in. Releases bundle their own runtime, so there is nothing else to install. The same program and database format run in three ways:
+
+- **On your computer** (macOS, Windows, Linux): download the archive from [Releases](https://github.com/statedock/statedock-local/releases/latest), extract it and start `StateDock.command`, `statedock.bat` or `./statedock`. It listens only on `127.0.0.1:4040` and needs no sign-in. The MCP URL is `http://127.0.0.1:4040/mcp`; the token is in `~/.statedock/agent_token`.
+- **On a Linux server** (systemd, x64 or ARM64, 1 CPU / 1 GB is enough): one command installs it as a service that starts on boot:
+
+  ```sh
+  curl -fsSL https://raw.githubusercontent.com/statedock/statedock-local/main/scripts/install.sh \
+    | sudo bash -s -- --public-url https://dock.example.com
+  ```
+
+  Put Caddy or a tunnel in front for HTTPS. `sudo statedock token` prints the access token; `sudo statedock-ctl update` backs up the database, upgrades and rolls back automatically if the new version fails to start.
+- **In Docker**: the image `ghcr.io/statedock/statedock` is the same program; `deploy/compose.yaml` in the repository runs it with Caddy.
+
+On a server or in Docker, StateDock runs in **server mode**: there is one owner and one access token, browsers sign in once at `/login`, and agents send `Authorization: Bearer <token>` to `https://your-domain/mcp`. There are no accounts, roles, email, or billing limits.
+
+Guides in the repository: [README](https://github.com/statedock/statedock-local#readme) · [server, HTTPS, upgrades and Docker](https://github.com/statedock/statedock-local/blob/main/docs/server.md).
+
+The former `statedock-docker` repository is archived and merged into StateDock Local; existing `./data` folders work unchanged ([migration steps](https://github.com/statedock/statedock-local/blob/main/docs/server.md#moving-from-the-statedock-docker-image)).
 
 ## Notifications
 
@@ -113,7 +130,7 @@ Depending on the deployment and its configuration, StateDock can deliver built-i
 ## Troubleshooting
 
 - **The agent sees no Ready work**: check that the task is Ready, assigned to the intended identity, and in the project returned by **get_instance_info**. Confirm that the current MCP connection is bound to that identity.
-- **The agent reports a different identity**: compare **agentId**, **publicOrigin**, and **mcpUrl** from **get_instance_info** with the connection in MCP settings. Refresh cached OAuth/MCP tools or start a new conversation after changing authorization.
+- **The agent reports a different identity**: compare **agentId**, **agentName**, **publicOrigin**, and **mcpUrl** from **get_instance_info** with the connection in MCP settings. Refresh cached OAuth/MCP tools or start a new conversation after changing authorization.
 - **A Cloudflare user cannot sign in**: ask the instance administrator to approve the exact account email and check that email delivery is configured.
 - **A self-hosted MCP/OAuth client cannot connect**: use the instance's public HTTPS origin, then verify its Worker configuration, OAuth discovery, email sender, and secrets.
 - **A guide link does not open**: use the [Cloudflare repository](https://github.com/statedock/statedock/tree/main/docs) for deployment and operations guides. The Cloudflare app can also serve the matching Markdown guide files directly.

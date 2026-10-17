@@ -1,6 +1,6 @@
 # StateDock 文档
 
-本指南统一说明 StateDock Cloud、Cloudflare 自部署版和计划中的 Docker 版。浏览器页面 [statedock.dev/doc](https://statedock.dev/doc) 从本文件渲染；Markdown 客户端仍可直接访问 [doc.md](https://statedock.dev/doc.md)。请先确认正在使用的部署版本，再按对应章节操作。
+本指南统一说明 StateDock Cloud、Cloudflare 自部署版和 StateDock Local（电脑、Linux 服务器或 Docker）。浏览器页面 [statedock.dev/doc](https://statedock.dev/doc) 从本文件渲染；Markdown 客户端仍可直接访问 [doc.md](https://statedock.dev/doc.md)。请先确认正在使用的部署版本，再按对应章节操作。
 
 StateDock 保存共享项目上下文并协调任务，不会运行或唤醒编程 Agent，也不会读取你的源代码。
 
@@ -12,14 +12,14 @@ StateDock 为用户和编程 Agent 提供共同的项目空间，用于记录决
 
 - **StateDock Cloud**：在 [app.statedock.dev](https://app.statedock.dev) 登录，由 StateDock 运营服务和账户。
 - **Cloudflare 自部署**：把开源版部署到你自己的 Cloudflare 账户，由你运营实例、邮件投递和备份。
-- **Docker 自部署**：计划中，目前没有可运行的发行版本。
+- **StateDock Local**：一个开源程序，内置 SQLite 数据库。可在电脑上免登录使用，也可安装到 Linux 服务器或 Docker 中 24 小时远程访问。实例和备份由你自己运维。
 
 ## 开始使用
 
 1. 选择上面的部署方式并打开对应的 Web 应用。
-2. 登录；Cloudflare 自部署用户需要先由实例管理员批准账户。
+2. 登录；Cloudflare 自部署用户需要先由实例管理员批准账户。 电脑上的 StateDock Local 无需登录；服务器上使用访问令牌登录。
 3. 创建或选择项目，然后在编程工具中添加 StateDock MCP 连接。实例地址和凭据必须属于同一个部署。
-4. 从同一个实例获取并安装或更新 [Agent 配置指南](/agent.md) 与 [skill](/skill.md)。Agent 开始会话时应调用 **get_instance_info**，再对绑定项目调用 **resume_project**。
+4. 让 Agent 按同一个实例的 [Agent 配置指南](/agent.md) 完成接入。工作流规则随 MCP 连接下发；完整协议在 [skill.md](/skill.md)，按需阅读，不需要复制进仓库。Agent 开始会话时应调用 **get_instance_info**，再对绑定项目调用 **resume_project**。
 
 远程 MCP 客户端可在 **MCP Connections** 创建访问 Token，然后把实例地址和 Bearer Token 加入 MCP 设置。常见 HTTP 配置如下：
 
@@ -102,9 +102,26 @@ Cloudflare 版运行在你自己的账户中，使用 **Workers、D1、KV 和 R2
 
 备份方案应覆盖 D1、R2 附件、OAuth KV、部署配置和密钥。自部署 Worker 不得使用官方 Cloud 的数据库或资源 ID。
 
-## Docker 自部署
+## StateDock Local：电脑、Linux 服务器、Docker
 
-**即将推出。** Docker 版当前还不能安装。尚无已发布的镜像、Compose 文件或安装命令，也没有确定的发布日期。[Docker 仓库](https://github.com/statedock/statedock-docker)目前仅用于发布预告；请关注后续公告。不要把 Cloudflare 部署命令用于 Docker。
+StateDock Local 是一个开源程序（[statedock-local](https://github.com/statedock/statedock-local)），内置 Web 应用、API、MCP 服务和 SQLite 数据库。发布包自带运行时，无需再安装其他东西。同一个程序、同一种数据库格式，有三种运行方式：
+
+- **在电脑上**（macOS、Windows、Linux）：从 [Releases](https://github.com/statedock/statedock-local/releases/latest) 下载压缩包，解压后运行 `StateDock.command`、`statedock.bat` 或 `./statedock`。只监听 `127.0.0.1:4040`，无需登录。MCP 地址为 `http://127.0.0.1:4040/mcp`，令牌在 `~/.statedock/agent_token`。
+- **在 Linux 服务器上**（systemd，x64 或 ARM64，1 核 1G 即可）：一条命令安装为开机自启的服务：
+
+  ```sh
+  curl -fsSL https://raw.githubusercontent.com/statedock/statedock-local/main/scripts/install.sh \
+    | sudo bash -s -- --public-url https://dock.example.com
+  ```
+
+  前面用 Caddy 或隧道提供 HTTPS。`sudo statedock token` 输出访问令牌；`sudo statedock-ctl update` 会先备份数据库再升级，新版本启动失败时自动回滚。
+- **在 Docker 中**：镜像 `ghcr.io/statedock/statedock` 就是同一个程序；仓库中的 `deploy/compose.yaml` 搭配 Caddy 运行。
+
+在服务器或 Docker 中，StateDock 运行在**服务器模式**：只有一个所有者、一个访问令牌，浏览器在 `/login` 登录一次，Agent 向 `https://你的域名/mcp` 发送 `Authorization: Bearer <令牌>`。没有账号、角色、邮件或计费限制。
+
+仓库中的说明：[README](https://github.com/statedock/statedock-local#readme) · [服务器、HTTPS、升级与 Docker](https://github.com/statedock/statedock-local/blob/main/docs/server.md)。
+
+原 `statedock-docker` 仓库已归档并入 StateDock Local；已有的 `./data` 目录可直接使用（[迁移步骤](https://github.com/statedock/statedock-local/blob/main/docs/server.md#moving-from-the-statedock-docker-image)）。
 
 ## 通知
 
@@ -113,7 +130,7 @@ Cloudflare 版运行在你自己的账户中，使用 **Workers、D1、KV 和 R2
 ## 故障排查
 
 - **Agent 看不到 Ready 任务**：检查任务是否为 Ready、是否分配给预期身份，以及任务所属项目是否与 **get_instance_info** 返回的项目一致。确认当前 MCP 连接绑定了该身份。
-- **Agent 报告的身份不符**：对比 **agentId**、**publicOrigin** 和 **mcpUrl** 与 MCP 设置。修改授权后刷新缓存的 OAuth/MCP 工具，或开启新对话。
+- **Agent 报告的身份不符**：对比 **agentId**、**agentName**、**publicOrigin** 和 **mcpUrl** 与 MCP 设置。修改授权后刷新缓存的 OAuth/MCP 工具，或开启新对话。
 - **Cloudflare 用户无法登录**：请管理员批准完全一致的账户邮箱，并确认邮件投递已配置。
 - **自部署 MCP/OAuth 无法连接**：使用实例的公开 HTTPS 地址，并检查 Worker 配置、OAuth 发现信息、邮件发件人和密钥。
 - **文档链接打不开**：部署与运维指南也可以从 [Cloudflare 仓库](https://github.com/statedock/statedock/tree/main/docs)访问。Cloudflare 应用也会提供对应的 Markdown 指南文件。
