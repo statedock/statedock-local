@@ -8,9 +8,11 @@
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
 [![GitHub release](https://img.shields.io/github/v/release/statedock/statedock-local)](https://github.com/statedock/statedock-local/releases)
 
-> **The lightweight, zero-login, self-contained personal task coordination engine and Model Context Protocol (MCP) server.**
+> **Shared project memory for you and your coding agents.**
 
-StateDock Local is designed specifically for individual developers and AI coding agents (**Cursor**, **DeepSeek Harness**, **Antigravity**, **Claude Code**, **Windsurf**, etc.). It provides a single-user, offline-capable task coordination board and agent integration hub on your local machine.
+Goals, decisions and handoffs live in one place. Claude Code, Cursor and Codex read context over MCP, pick up ready work and write back handoffs, so the next agent never starts from zero.
+
+StateDock Local runs it on your computer with no sign-in, or on your own server with one command. Single program, built-in SQLite, nothing else to install.
 
 * 🚀 **Self-contained**: every release bundles its own runtime and SQLite. No Node.js, Docker or database server to install.
 * 🖥️ **Full Web/PWA dashboard**: the official StateDock interface — task board, handoff summaries, blockers, activity history.

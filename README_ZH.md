@@ -8,9 +8,11 @@
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
 [![GitHub release](https://img.shields.io/github/v/release/statedock/statedock-local)](https://github.com/statedock/statedock-local/releases)
 
-> **轻量、自带运行时的个人任务调度引擎与 MCP 服务，可在电脑上免登录使用，也可一条命令部署到服务器。**
+> **你和 Coding Agent 的共享项目记忆。**
 
-StateDock Local 是专为个人开发者与 Coding Agent（**DeepSeek Harness**、**Cursor**、**Antigravity**、**Claude Code**、**Windsurf** 等）打造的本地任务协作中枢：
+目标、决定和交接集中在一处。Claude Code、Cursor 和 Codex 通过 MCP 读取上下文、领取任务、写回交接，换个 Agent 也不用从头解释。
+
+StateDock Local 可以在电脑上免登录运行，也可以一条命令部署到你自己的服务器。单个程序，内置 SQLite，无需安装其他依赖。
 
 * 🚀 **自带运行时**：每个发布包都内置运行时和 SQLite，无需安装 Node.js、Docker 或数据库。
 * 🖥️ **完整 Web/PWA 控制台**：官方 StateDock 界面，任务看板、交付摘要、阻塞说明、活动记录。
