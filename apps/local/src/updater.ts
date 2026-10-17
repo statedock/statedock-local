@@ -16,7 +16,7 @@ import { pipeline } from "node:stream/promises";
 import { spawn } from "node:child_process";
 import { createGunzip } from "node:zlib";
 
-export const CURRENT_VERSION = "0.0.1";
+export const CURRENT_VERSION = "0.1.0";
 const GITHUB_REPO = "statedock/statedock-local";
 
 export interface VersionInfo {
@@ -41,7 +41,11 @@ let memoryCache: CachedCheck | null = null;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 function compareSemver(v1: string, v2: string): number {
-  const parse = (v: string) => v.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const parse = (v: string) =>
+    v
+      .replace(/^v/, "")
+      .split(".")
+      .map((n) => parseInt(n, 10) || 0);
   const p1 = parse(v1);
   const p2 = parse(v2);
   for (let i = 0; i < 3; i++) {
@@ -102,7 +106,7 @@ export async function checkUpdate(force = false): Promise<VersionInfo> {
       publishedAt: release.published_at || new Date().toISOString(),
       assetName: matchedAsset?.name,
       downloadUrl: matchedAsset?.browser_download_url,
-      canAutoUpdate: Boolean(matchedAsset?.browser_download_url),
+      canAutoUpdate: false,
       checkedAt: new Date().toISOString(),
     };
 
@@ -124,89 +128,21 @@ export async function checkUpdate(force = false): Promise<VersionInfo> {
   }
 }
 
-export async function applyUpdate(dataDir: string): Promise<{ success: boolean; message: string }> {
-  const updateInfo = await checkUpdate(true);
-  if (!updateInfo.hasUpdate || !updateInfo.downloadUrl) {
-    return { success: false, message: "No update available or matching asset not found." };
-  }
-
-  const updatesDir = join(dataDir, "updates");
-  mkdirSync(updatesDir, { recursive: true });
-
-  const tempFile = join(updatesDir, `download-${Date.now()}.tmp`);
-  const extractedBinary = join(updatesDir, process.platform === "win32" ? "statedock.exe" : "statedock");
-
-  try {
-    // 1. Download asset
-    const res = await fetch(updateInfo.downloadUrl);
-    if (!res.ok || !res.body) {
-      throw new Error(`Failed to download update: HTTP ${res.status}`);
-    }
-
-    const fileStream = createWriteStream(tempFile);
-    // @ts-ignore Node standard ReadableStream compatibility
-    await pipeline(res.body, fileStream);
-
-    // 2. Prepare binary (Direct binary or gzip unpack)
-    if (updateInfo.assetName?.endsWith(".gz")) {
-      const gunzip = createGunzip();
-      const rawStream = readFileSync(tempFile);
-      // Unpack gunzip
-      await pipeline(res.body, gunzip, createWriteStream(extractedBinary));
-    } else {
-      copyFileSync(tempFile, extractedBinary);
-    }
-
-    if (process.platform !== "win32") {
-      chmodSync(extractedBinary, 0o755);
-    }
-
-    // 3. Atomically replace the current running binary
-    const currentBinary = process.execPath;
-    const oldBinary = `${currentBinary}.old`;
-
-    if (existsSync(oldBinary)) {
-      try {
-        unlinkSync(oldBinary);
-      } catch {}
-    }
-
-    // Rename current to .old, copy new binary into current path
-    renameSync(currentBinary, oldBinary);
-    copyFileSync(extractedBinary, currentBinary);
-
-    if (process.platform !== "win32") {
-      chmodSync(currentBinary, 0o755);
-      try {
-        unlinkSync(oldBinary);
-      } catch {}
-    }
-
-    // 4. Trigger background restart
-    setTimeout(() => {
-      const child = spawn(process.argv[0], process.argv.slice(1), {
-        detached: true,
-        stdio: "ignore",
-      });
-      child.unref();
-      process.exit(0);
-    }, 1000);
-
-    return {
-      success: true,
-      message: `Updated to ${updateInfo.latestVersion}. Restarting StateDock...`,
-    };
-  } catch (error: any) {
-    console.error("[StateDock Local Update Failed]", error);
-    return {
-      success: false,
-      message: `Update failed: ${error.message}. Please update manually from GitHub Releases.`,
-    };
-  } finally {
-    if (existsSync(tempFile)) {
-      try {
-        unlinkSync(tempFile);
-      } catch {}
-    }
-  }
+/**
+ * In-place self-update is disabled: release assets are archives (app + embedded Node), so the
+ * previous approach of overwriting process.execPath would have replaced the Node runtime with an
+ * archive. Updates go through the installer instead, which backs up the database first.
+ */
+export async function applyUpdate(
+  _dataDir: string,
+): Promise<{ success: boolean; message: string }> {
+  const info = await checkUpdate(true);
+  if (!info.hasUpdate) return { success: false, message: "Already on the latest version." };
+  return {
+    success: false,
+    message:
+      process.platform === "linux"
+        ? `StateDock ${info.latestVersion} is available. On a server installed with install.sh run: sudo statedock-ctl update`
+        : `StateDock ${info.latestVersion} is available. Download it from ${info.releaseUrl} and replace the app folder; your data directory is kept.`,
+  };
 }

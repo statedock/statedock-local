@@ -19,6 +19,7 @@ import { z, ZodError } from "zod";
 import type { Client } from "@libsql/client";
 import { handleMcpRequest } from "./mcp-handler.js";
 import { SecurityManager } from "./security.js";
+import { registerLoginRoutes, serverAuthMiddleware } from "./server-auth.js";
 import { backupDatabase } from "./storage.js";
 import { applyUpdate, checkUpdate, CURRENT_VERSION } from "./updater.js";
 import { exportSnapshot, importSnapshot } from "./export-import.js";
@@ -35,10 +36,15 @@ export interface AppOptions {
 
 export function createApp(service: StateDockService, options: AppOptions) {
   const app = new Hono<{ Variables: { actor: import("@statedock/core").Actor } }>();
-  const notificationManager = options.notificationManager ?? new NotificationManager(options.dataDir);
+  const notificationManager =
+    options.notificationManager ?? new NotificationManager(options.dataDir);
 
   // 1. Host Validation (Prevent DNS Rebinding)
   app.use("*", options.securityManager.hostValidationMiddleware());
+
+  // 1b. Server mode: everything beyond static assets needs the token or a signed web session.
+  app.use("*", serverAuthMiddleware(options.securityManager));
+  registerLoginRoutes(app, options.securityManager);
 
   // 2. Origin & Sec-Fetch-Site Validation for API routes (Prevent cross-site probing)
   app.use("/api/*", options.securityManager.originValidationMiddleware());
@@ -52,8 +58,7 @@ export function createApp(service: StateDockService, options: AppOptions) {
       return c.json(
         {
           error: "unauthorized",
-          message:
-            "Invalid or missing Agent Bearer token. Please check ~/.statedock/agent_token.",
+          message: "Invalid or missing Agent Bearer token. Please check ~/.statedock/agent_token.",
         },
         401,
       );
@@ -66,7 +71,9 @@ export function createApp(service: StateDockService, options: AppOptions) {
     });
 
     const publicOrigin =
-      options.publicOrigin || `http://127.0.0.1:${options.securityManager.getPort()}`;
+      options.publicOrigin ||
+      options.securityManager.publicOrigin ||
+      `http://127.0.0.1:${options.securityManager.getPort()}`;
     return handleMcpRequest(service, actor, c.req.raw, publicOrigin);
   });
 
@@ -127,11 +134,12 @@ export function createApp(service: StateDockService, options: AppOptions) {
   // 7. Instance info
   app.get("/api/instance/info", (c) => {
     const port = options.securityManager.getPort();
+    const origin = options.securityManager.publicOrigin ?? `http://127.0.0.1:${port}`;
     return c.json({
-      mode: "local",
+      mode: options.securityManager.serverMode ? "server" : "local",
       version: CURRENT_VERSION,
-      publicOrigin: `http://127.0.0.1:${port}`,
-      mcpUrl: `http://127.0.0.1:${port}/mcp`,
+      publicOrigin: origin,
+      mcpUrl: `${origin}/mcp`,
     });
   });
 
@@ -490,7 +498,9 @@ export function createApp(service: StateDockService, options: AppOptions) {
     }
   });
 
-  app.get("/api/auth/notifications/discord", (c) => c.json({ data: notificationManager.listDiscord() }));
+  app.get("/api/auth/notifications/discord", (c) =>
+    c.json({ data: notificationManager.listDiscord() }),
+  );
   app.post("/api/auth/notifications/discord", async (c) => {
     const body = await c.req.json();
     return c.json({ data: notificationManager.addDiscord(body) }, 201);
@@ -509,7 +519,9 @@ export function createApp(service: StateDockService, options: AppOptions) {
   });
   app.get("/api/auth/discord/subscriber", (c) => c.json({ data: { subscriber: null } }));
 
-  app.get("/api/auth/notifications/webhook", (c) => c.json({ data: notificationManager.listWebhook() }));
+  app.get("/api/auth/notifications/webhook", (c) =>
+    c.json({ data: notificationManager.listWebhook() }),
+  );
   app.post("/api/auth/notifications/webhook", async (c) => {
     const body = await c.req.json();
     return c.json({ data: notificationManager.addWebhook(body) }, 201);

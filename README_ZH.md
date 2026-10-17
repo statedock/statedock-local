@@ -104,28 +104,43 @@ StateDock Local 启动时会在终端打印 Agent 连接配置代码段。
 
 ## 命令行参数 (CLI)
 
-支持常用命令行启动参数：
-
 ```text
-Usage:
-  statedock [options]
+用法:
+  statedock [选项]
+  statedock token          输出访问令牌 / Agent 令牌
+  statedock backup         生成一致的数据库备份并输出路径
 
-Options:
-  -p, --port <port>       指定 HTTP/MCP 监听端口 (默认: 4040，端口被占会自动递增)
-  -d, --data-dir <dir>    指定数据与配置存放目录 (默认: ~/.statedock)
-  --no-open               启动时不自动唤起默认浏览器
-  -v, --version           显示版本号
-  -h, --help              查看帮助说明
+选项:
+  -p, --port <port>       监听端口（默认 4040；桌面使用时被占用会自动顺延）
+  -d, --data-dir <dir>    数据目录（默认 ~/.statedock）
+  --host <addr>           监听地址（默认 127.0.0.1）。非本机地址会开启服务器模式：需要登录和 Bearer 令牌
+  --public-url <url>      公网 HTTPS 地址，例如 https://dock.example.com
+  --no-open               不自动打开浏览器
+  -v, --version           显示版本
+  -h, --help              显示帮助
 ```
 
 ---
 
-## 自动更新机制
+## 部署到服务器（VPS / Docker）
 
-StateDock Local 会在后台静默检查 [GitHub Releases](https://github.com/statedock/statedock-local/releases) 的新版本：
+同一个程序就是自部署服务器。在 Linux 上一条命令安装为 systemd 服务，开机自启：
 
-* **Web 提示**：检测到新版本后，页面顶部出现更新提示横幅与 Release Notes。
-* **安全平滑**：点击 **[立即更新]**，程序会自动备份数据库、下载新版本压缩包、校验 SHA256 哈希值、原子替换程序文件并自动平滑重启。
+```sh
+curl -fsSL https://raw.githubusercontent.com/statedock/statedock-local/main/scripts/install.sh \
+  | sudo bash -s -- --public-url https://dock.example.com
+```
+
+也提供薄 Docker 镜像（`ghcr.io/statedock/statedock`）。HTTPS 配置、自动备份与回滚的升级流程、从旧版 `statedock-docker` 迁移，见 [docs/server.md](docs/server.md)。
+
+---
+
+## 更新
+
+StateDock 会检查 [GitHub Releases](https://github.com/statedock/statedock-local/releases)，有新版本时在界面上提示。
+
+* **桌面**：下载新的压缩包替换程序目录即可，数据保留在 `~/.statedock`。
+* **Linux 服务器**：`sudo statedock-ctl update` 会先备份数据库再升级，新版本启动失败时自动回滚。
 
 ---
 

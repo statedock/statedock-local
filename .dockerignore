@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/dist
+release-bundle
+statedock-*.tar.gz
+statedock-*.zip
+.git
+*.db
+*.db-wal
+*.db-shm

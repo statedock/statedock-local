@@ -102,15 +102,18 @@ Receive alerts on your phone whenever an agent finishes a task (`submit_handoff`
 
 ## CLI Usage
 
-For command-line enthusiasts:
-
 ```text
 Usage:
   statedock [options]
+  statedock token          Print the access / agent token
+  statedock backup         Write a consistent database backup and print its path
 
 Options:
-  -p, --port <port>       Port to listen on (default: 4040, auto-increments if in use)
+  -p, --port <port>       Port to listen on (default: 4040, auto-increments if in use on a laptop)
   -d, --data-dir <dir>    Data storage directory (default: ~/.statedock)
+  --host <addr>           Listen address (default: 127.0.0.1). A non-loopback address enables
+                          server mode: sign-in and Bearer token required
+  --public-url <url>      Public HTTPS origin, e.g. https://dock.example.com
   --no-open               Do not automatically launch the default browser
   -v, --version           Display version number
   -h, --help              Show help message
@@ -118,12 +121,30 @@ Options:
 
 ---
 
-## Automatic Updates
+## Run It on a Server (VPS / Docker)
 
-StateDock Local periodically checks [GitHub Releases](https://github.com/statedock/statedock-local/releases) in the background:
+The same program is the self-hosted server. On Linux one command installs it as a systemd service
+that starts on boot:
 
-* **Web UI Notification**: An update banner appears when a new release is available.
-* **Safe Upgrade**: Clicking **[Update Now]** automatically backs up your SQLite database, downloads the new bundle, verifies SHA256 checksums, atomically updates the binary, and gracefully restarts.
+```sh
+curl -fsSL https://raw.githubusercontent.com/statedock/statedock-local/main/scripts/install.sh \
+  | sudo bash -s -- --public-url https://dock.example.com
+```
+
+Docker is available as a thin image (`ghcr.io/statedock/statedock`). See
+[docs/server.md](docs/server.md) for HTTPS, updates with automatic backup and rollback, and moving
+from the former `statedock-docker` image.
+
+---
+
+## Updates
+
+StateDock checks [GitHub Releases](https://github.com/statedock/statedock-local/releases) and shows
+a banner when a new version is out.
+
+* **Laptop**: download the new archive and replace the app folder. Your data stays in `~/.statedock`.
+* **Linux server**: `sudo statedock-ctl update` backs up the database, upgrades, and rolls back
+  automatically if the new version does not start.
 
 ---
 

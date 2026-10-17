@@ -1,0 +1,4 @@
+# Replace with your domain; ports 80/443 must be open. Caddy obtains HTTPS certificates itself.
+dock.example.com {
+    reverse_proxy statedock:3000
+}

@@ -1,0 +1,36 @@
+# Optional Docker deployment. Same data layout as the former statedock-docker image:
+# an existing ./data folder (statedock.db) can be mounted as-is.
+#   1. Replace dock.example.com in Caddyfile and below with your domain (DNS pointing here).
+#   2. docker compose up -d
+#   3. docker compose exec statedock node dist/index.js token --no-open   # access token
+services:
+  statedock:
+    image: ghcr.io/statedock/statedock:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - PUBLIC_BASE_URL=https://dock.example.com
+      # - STATEDOCK_AGENT_TOKEN=...   # optional fixed token; otherwise generated in /data/agent_token
+    volumes:
+      - ./data:/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - statedock
+
+volumes:
+  caddy_data:
+  caddy_config:

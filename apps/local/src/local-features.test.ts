@@ -119,4 +119,105 @@ describe("StateDock Local Features", () => {
       } catch {}
     }
   });
+
+  test("Server mode requires the token or a signed session and accepts the public host", async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), "statedock-test-server-"));
+    try {
+      const { client, db } = createDatabase(`file:${join(tmpDir, "test.db")}`);
+      await migrate(client);
+      const securityManager = new SecurityManager({
+        port: 3000,
+        dataDir: tmpDir,
+        serverMode: true,
+        publicOrigin: "https://dock.example.com",
+      });
+      const app = createApp(new StateDockService(createRepository(db)), {
+        securityManager,
+        client,
+        dataDir: tmpDir,
+        backupsDir: join(tmpDir, "backups"),
+      });
+      const host = { host: "dock.example.com" };
+      const token = securityManager.getAgentToken();
+
+      // Health stays open for probes; API, MCP and pages do not.
+      assert.equal((await app.request("/health", { headers: host })).status, 200);
+      assert.equal((await app.request("/api/projects", { headers: host })).status, 401);
+      assert.equal((await app.request("/mcp", { method: "POST", headers: host })).status, 401);
+      const page = await app.request("/", { headers: host });
+      assert.equal(page.status, 302);
+      assert.ok(page.headers.get("location")?.startsWith("/login"));
+
+      // Unknown hosts are still rejected when a public URL is configured.
+      assert.equal(
+        (await app.request("/health", { headers: { host: "evil.example.net" } })).status,
+        403,
+      );
+
+      // Bearer token works for API clients.
+      const bearer = await app.request("/api/projects", {
+        headers: { ...host, Authorization: `Bearer ${token}` },
+      });
+      assert.equal(bearer.status, 200);
+
+      // Wrong token is refused; right token yields a session cookie that unlocks the API.
+      const bad = await app.request("/login", {
+        method: "POST",
+        headers: { ...host, "Content-Type": "application/x-www-form-urlencoded" },
+        body: "token=wrong",
+      });
+      assert.equal(bad.status, 401);
+      const login = await app.request("/login?next=%2Fprojects", {
+        method: "POST",
+        headers: { ...host, "Content-Type": "application/x-www-form-urlencoded" },
+        body: `token=${encodeURIComponent(token)}`,
+      });
+      assert.equal(login.status, 302);
+      assert.equal(login.headers.get("location"), "/projects");
+      const cookie = login.headers.get("set-cookie") ?? "";
+      assert.match(cookie, /HttpOnly/i);
+      assert.match(cookie, /Secure/i);
+      const session = cookie.split(";")[0];
+      const withSession = await app.request("/api/projects", {
+        headers: { ...host, cookie: session, origin: "https://dock.example.com" },
+      });
+      assert.equal(withSession.status, 200);
+
+      // A session cookie alone never authorizes MCP.
+      assert.equal(
+        (await app.request("/mcp", { method: "POST", headers: { ...host, cookie: session } }))
+          .status,
+        401,
+      );
+    } finally {
+      try {
+        rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {}
+    }
+  });
+
+  test("Loopback mode stays zero-login", async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), "statedock-test-loop-"));
+    try {
+      const { client, db } = createDatabase(`file:${join(tmpDir, "test.db")}`);
+      await migrate(client);
+      const securityManager = new SecurityManager({ port: 4040, dataDir: tmpDir });
+      const app = createApp(new StateDockService(createRepository(db)), {
+        securityManager,
+        client,
+        dataDir: tmpDir,
+        backupsDir: join(tmpDir, "backups"),
+      });
+      const res = await app.request("/api/projects", { headers: { host: "localhost:4040" } });
+      assert.equal(res.status, 200);
+      assert.equal(
+        (await app.request("/api/projects", { headers: { host: "dock.example.com" } })).status,
+        403,
+      );
+    } finally {
+      try {
+        rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {}
+    }
+  });
 });
