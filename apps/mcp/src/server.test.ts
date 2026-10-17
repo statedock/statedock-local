@@ -225,8 +225,14 @@ test("stdio MCP tools share API state, record actor notes, and report errors", a
     });
     assert.equal(invalid.isError, true);
   } finally {
-    await client.close();
-    database.client.close();
-    rmSync(directory, { recursive: true, force: true });
+    try {
+      await client.close();
+    } catch {}
+    try {
+      database.client.close();
+    } catch {}
+    try {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {}
   }
 });
